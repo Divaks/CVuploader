@@ -1,0 +1,167 @@
+@model IEnumerable<ContactManager.Models.Contact>
+
+@{
+    ViewData["Title"] = "Contacts";
+}
+
+<form asp-controller="Contacts" asp-action="Upload" method="post" enctype="multipart/form-data">
+    <div class="mb-3">
+        <input type="file" name="file" class="form-control" accept=".csv" required />
+    </div>
+    <button type="submit" class="btn btn-primary">Upload CSV</button>
+</form>
+
+@if (!ViewData.ModelState.IsValid)
+{
+    <div class="alert alert-danger mt-3">
+        @Html.ValidationSummary(true)
+    </div>
+}
+
+<input type="text" id="filterInput" class="form-control mt-4 mb-3" placeholder="Filter..." />
+
+<table class="table table-bordered table-hover" id="contactsTable">
+    <thead class="table-light">
+        <tr>
+            <th onclick="sortTable(0)" style="cursor: pointer;">Name</th>
+            <th onclick="sortTable(1)" style="cursor: pointer;">Date of Birth</th>
+            <th onclick="sortTable(2)" style="cursor: pointer;">Married</th>
+            <th onclick="sortTable(3)" style="cursor: pointer;">Phone</th>
+            <th onclick="sortTable(4)" style="cursor: pointer;">Salary</th>
+            <th>Actions</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null)
+        {
+            foreach (var contact in Model)
+            {
+                <tr data-id="@contact.Id">
+                    <td contenteditable="false">@contact.Name</td>
+                    <td contenteditable="false">@contact.DateOfBirth.ToString("yyyy-MM-dd")</td>
+                    <td contenteditable="false">@(contact.Married ? "true" : "false")</td>
+                    <td contenteditable="false">@contact.Phone</td>
+                    <td contenteditable="false">@contact.Salary</td>
+                    <td>
+                        <button class="btn btn-sm btn-warning" onclick="toggleEdit(this)">Edit</button>
+                        <button class="btn btn-sm btn-danger" onclick="deleteRow(this)">Delete</button>
+                    </td>
+                </tr>
+            }
+        }
+    </tbody>
+</table>
+
+<script>
+    document.getElementById("filterInput").addEventListener("keyup", function () {
+        let filter = this.value.toUpperCase();
+        let rows = document.getElementById("contactsTable").getElementsByTagName("tbody")[0].getElementsByTagName("tr");
+        for (let i = 0; i < rows.length; i++) {
+            let cells = rows[i].getElementsByTagName("td");
+            let match = false;
+            for (let j = 0; j < cells.length - 1; j++) {
+                if (cells[j].innerText.toUpperCase().indexOf(filter) > -1) {
+                    match = true;
+                    break;
+                }
+            }
+            rows[i].style.display = match ? "" : "none";
+        }
+    });
+
+    function sortTable(n) {
+        let table = document.getElementById("contactsTable");
+        let rows, switching, i, x, y, shouldSwitch, dir, switchcount = 0;
+        switching = true;
+        dir = "asc";
+        while (switching) {
+            switching = false;
+            rows = table.getElementsByTagName("tbody")[0].getElementsByTagName("tr");
+            for (i = 0; i < (rows.length - 1); i++) {
+                shouldSwitch = false;
+                x = rows[i].getElementsByTagName("td")[n];
+                y = rows[i + 1].getElementsByTagName("td")[n];
+                if (dir == "asc") {
+                    if (x.innerHTML.toLowerCase() > y.innerHTML.toLowerCase()) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                } else if (dir == "desc") {
+                    if (x.innerHTML.toLowerCase() < y.innerHTML.toLowerCase()) {
+                        shouldSwitch = true;
+                        break;
+                    }
+                }
+            }
+            if (shouldSwitch) {
+                rows[i].parentNode.insertBefore(rows[i + 1], rows[i]);
+                switching = true;
+                switchcount++;
+            } else {
+                if (switchcount == 0 && dir == "asc") {
+                    dir = "desc";
+                    switching = true;
+                }
+            }
+        }
+    }
+
+    function toggleEdit(btn) {
+        let row = btn.closest("tr");
+        let cells = row.querySelectorAll("td:not(:last-child)");
+        let isEditing = row.classList.contains("editing");
+
+        if (isEditing) {
+            let contact = {
+                Id: row.getAttribute("data-id"),
+                Name: cells[0].innerText.trim(),
+                DateOfBirth: cells[1].innerText.trim(),
+                Married: cells[2].innerText.trim().toLowerCase() === 'true',
+                Phone: cells[3].innerText.trim(),
+                Salary: parseFloat(cells[4].innerText.trim())
+            };
+
+            fetch('/Contacts/Update', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(contact)
+            }).then(response => {
+                if (response.ok) {
+                    cells.forEach(c => {
+                        c.setAttribute("contenteditable", "false");
+                        c.style.backgroundColor = "";
+                    });
+                    row.classList.remove("editing");
+                    btn.innerText = "Edit";
+                    btn.classList.remove("btn-success");
+                    btn.classList.add("btn-warning");
+                }
+            });
+        } else {
+            cells.forEach(c => {
+                c.setAttribute("contenteditable", "true");
+                c.style.backgroundColor = "#f8f9fa";
+            });
+            row.classList.add("editing");
+            btn.innerText = "Save";
+            btn.classList.remove("btn-warning");
+            btn.classList.add("btn-success");
+            cells[0].focus();
+        }
+    }
+
+    function deleteRow(btn) {
+        let row = btn.closest("tr");
+        let id = row.getAttribute("data-id");
+
+        fetch(`/Contacts/Delete/${id}`, {
+            method: 'DELETE'
+        }).then(response => {
+            if (response.ok) {
+                row.remove();
+            }
+        });
+    }
+</script>
