@@ -223,3 +223,4 @@
 /Users/dmytro/CVuploader/backend/backend/obj/Debug/net9.0/backend.pdb
 /Users/dmytro/CVuploader/backend/backend/obj/Debug/net9.0/backend.genruntimeconfig.cache
 /Users/dmytro/CVuploader/backend/backend/obj/Debug/net9.0/ref/backend.dll
+/Users/dmytro/CVuploader/backend/backend/obj/Debug/net9.0/backend.sourcelink.json
